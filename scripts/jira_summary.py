@@ -62,7 +62,8 @@ def fetch_issues(start_date, end_date, fields):
 
     field_ids = list(fields.values()) + ["summary", "assignee"]
 
-    url = f"{JIRA_URL}/rest/api/3/search"
+    url = f"{JIRA_URL}/rest/api/3/search/jql"
+
     resp = requests.post(
         url,
         auth=(JIRA_EMAIL, JIRA_API_TOKEN),
