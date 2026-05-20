@@ -11,11 +11,9 @@ SLACK_WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
 # ── Date range ───────────────────────────────────────────────────────────────
 
 def get_last_week_range():
-    """Returns (monday, sunday) of the previous week as 'YYYY-MM-DD' strings."""
     today = datetime.now()
-    last_monday = today - timedelta(days=today.weekday() + 7)
-    last_sunday = last_monday + timedelta(days=6)
-    return last_monday.strftime("%Y-%m-%d"), last_sunday.strftime("%Y-%m-%d")
+    start = today - timedelta(days=6)
+    return start.strftime("%Y-%m-%d"), today.strftime("%Y-%m-%d")
 
 
 # ── JIRA helpers ─────────────────────────────────────────────────────────────
