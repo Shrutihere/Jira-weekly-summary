@@ -1,0 +1,29 @@
+name: Weekly JIRA → Slack Summary
+
+on:
+  schedule:
+    - cron: '30 12 * * 5'   # Every Friday at 6:00 PM IST (12:30 UTC)
+  workflow_dispatch:         # Also allows manual trigger from GitHub UI
+
+jobs:
+  send-summary:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run JIRA summary script
+        env:
+          JIRA_EMAIL:       ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN:   ${{ secrets.JIRA_API_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: python scripts/jira_summary.py
