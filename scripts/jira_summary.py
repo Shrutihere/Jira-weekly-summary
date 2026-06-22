@@ -28,11 +28,14 @@ def get_custom_field_ids():
     )
     resp.raise_for_status()
 
+    # NOTE: "setter id last modified by" MUST come before "setter" to prevent
+    # the shorter string from greedily matching the longer field name first.
     target_fields = {
         "content issue status":       "content_issue_status",
         "# of customers impacted":    "customers_impacted",
         "# of test slugs impacted":   "test_slugs_impacted",
         "# of candidates impacted":   "candidates_impacted",
+        "setter id last modified by": "setter_last_modified",
         "setter":                     "setter",
     }
 
@@ -108,6 +111,14 @@ def to_int(val):
     return 0
 
 
+def extract_name(raw):
+    if isinstance(raw, dict):
+        return raw.get("displayName") or raw.get("name")
+    elif isinstance(raw, str):
+        return raw.strip() or None
+    return None
+
+
 def process_issues(issues, fields):
     valid, invalid_count, customer_count = [], 0, 0
     status_field = fields.get("content_issue_status")
@@ -139,16 +150,11 @@ def aggregate_impact(valid_issues, fields):
         total_candidates += to_int(get_field_value(issue, fields.get("candidates_impacted")))
         total_customers  += to_int(get_field_value(issue, fields.get("customers_impacted")))
 
-        setter_raw = get_field_value(issue, fields.get("setter"))
-        if isinstance(setter_raw, dict):
-            name = setter_raw.get("displayName") or setter_raw.get("name")
-        elif isinstance(setter_raw, str):
-            name = setter_raw
-        else:
-            name = None
+        setter          = extract_name(get_field_value(issue, fields.get("setter"))) or "Unknown"
+        setter_last_mod = extract_name(get_field_value(issue, fields.get("setter_last_modified"))) or "Unknown"
 
-        if name:
-            setter_counts[name] = setter_counts.get(name, 0) + 1
+        key = (setter, setter_last_mod)
+        setter_counts[key] = setter_counts.get(key, 0) + 1
 
     return total_tests, total_candidates, total_customers, setter_counts
 
@@ -160,7 +166,8 @@ def build_slack_message(stats, impact, start_date, end_date):
 
     if setter_counts:
         setter_lines = "\n".join(
-            f"  • {name}: {count}" for name, count in sorted(setter_counts.items())
+            f"  • Setter: {setter}  &  Setter ID Last Modified By: {last_mod} --- {count}"
+            for (setter, last_mod), count in sorted(setter_counts.items())
         )
     else:
         setter_lines = "  NA"
@@ -173,7 +180,7 @@ def build_slack_message(stats, impact, start_date, end_date):
         f"  • Total valid issues: {stats['valid_count']}\n"
         f"  • Total invalid issues: {stats['invalid_count']}\n"
         f"  • Customer-content issues: {stats['customer_count']}\n\n"
-        f"*Valid Issues Per Member (Setter)*\n"
+        f"*Valid Issues Per Member*\n"
         f"{setter_lines}\n\n"
         f"*Impact*\n"
         f"  • # of tests impacted: {total_tests}\n"
