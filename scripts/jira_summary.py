@@ -28,21 +28,30 @@ def get_custom_field_ids():
     )
     resp.raise_for_status()
 
-    # NOTE: "setter id last modified by" MUST come before "setter" to prevent
-    # the shorter string from greedily matching the longer field name first.
-    target_fields = {
+    # Fields using substring match
+    substring_fields = {
         "content issue status":       "content_issue_status",
         "# of customers impacted":    "customers_impacted",
         "# of test slugs impacted":   "test_slugs_impacted",
         "# of candidates impacted":   "candidates_impacted",
         "setter id last modified by": "setter_last_modified",
-        "setter":                     "setter",
+    }
+
+    # Fields requiring exact match to avoid greedily matching similar names
+    exact_fields = {
+        "setter": "setter",
     }
 
     field_map = {}
     for field in resp.json():
         name_lower = field["name"].lower().strip()
-        for target, key in target_fields.items():
+
+        for target, key in exact_fields.items():
+            if name_lower == target:
+                field_map[key] = field["id"]
+                break
+
+        for target, key in substring_fields.items():
             if target in name_lower:
                 field_map[key] = field["id"]
                 break
